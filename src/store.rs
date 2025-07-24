@@ -1,27 +1,27 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-#[derive(Debug, Default)]
+#[derive(Clone)]
 pub struct SharedStore {
-    pub inner: Mutex<HashMap<String, String>>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct KV {
-    pub key: String,
-    pub value: String,
+    inner: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl SharedStore {
-    pub fn insert(&self, key: String, value: String) {
-        let mut map = self.inner.lock().unwrap();
-        map.insert(key, value);
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        let map = self.inner.lock().unwrap();
-        map.get(key).cloned()
+    pub async fn insert(&self, key: String, value: String) {
+        let mut store = self.inner.write().await;
+        store.insert(key, value);
+    }
+
+    pub async fn get(&self, key: &str) -> Option<String> {
+        let store = self.inner.read().await;
+        store.get(key).cloned()
     }
 }
 

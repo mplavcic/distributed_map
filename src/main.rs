@@ -1,25 +1,15 @@
-mod api;
 mod store;
+mod leader;
+mod proxy;
 
-use axum::{serve, Router};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use tokio::net::TcpListener;
-use tracing_subscriber;
-use store::SharedStore;
-use api::routes;
+use tokio::join;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
-    let store = Arc::new(SharedStore::default());
-    let app = Router::new().nest("/kv", routes(store));
-
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::info!("Listening on {}", addr);
-
-    let listener = TcpListener::bind(addr).await.unwrap();
-    serve(listener, app).await.unwrap();
+    join!(
+        leader::start_leader_server(),
+        proxy::start_proxy(4000),
+        proxy::start_proxy(4001)
+    );
 }
 
